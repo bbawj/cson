@@ -1,9 +1,6 @@
+#include <stdbool.h>
 #ifndef CSON_H
 #define CSON_H
-
-typedef struct {
-  char *whitespace;
-} Whitespace;
 
 typedef enum {
   NULL,
@@ -20,9 +17,14 @@ typedef enum {
   VALUE,
 } TOKEN_TYPE;
 
-typedef struct {
+typedef struct Token {
   TOKEN_TYPE type;
   char *text;
+  struct Token *child;
+  struct Token *next;
 } Token;
+
+bool scan_token(Token *res);
+bool scan_array(Token *res);
 
 #endif // ! CSON_H
