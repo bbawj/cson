@@ -26,5 +26,6 @@ typedef struct Token {
 
 bool scan_token(Token *res);
 bool scan_array(Token *res);
+bool scan_object(Token *res);
 
 #endif // ! CSON_H

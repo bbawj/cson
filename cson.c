@@ -236,7 +236,7 @@ bool scan_token(Token *res) {
       advance();
       return scan_array(res);
     case '{':
-      break;
+      return scan_object(res);
     case '"':
       return scan_string(res);
     case 't':
@@ -294,10 +294,55 @@ bool scan_array(Token *res) {
     }
   }
   root->type = ARRAY;
+  advance();
   return true;
 }
 
-bool scan_object(Token *res) {}
+bool scan_object(Token *res) {
+  char cur = peek();
+  if (cur != '{')
+    return false;
+
+  Token *prev = res;
+  cur = advance();
+  while (cur != '}') {
+    skip_whitespace();
+    Token *next = malloc(sizeof(Token));
+    next->child = NULL;
+    next->next = NULL;
+
+    if (!scan_string(next)) {
+      free(next);
+      return false;
+    }
+    skip_whitespace();
+    cur = peek();
+    if (cur != ':') {
+      free(next);
+      return false;
+    }
+    advance();
+    Token *child = malloc(sizeof(Token));
+    child->child = NULL;
+    child->next = NULL;
+    if (!scan_token(child)) {
+      free(child);
+      return false;
+    }
+    prev->next = next;
+    next->child = child;
+    prev = next;
+
+    skip_whitespace();
+    cur = peek();
+    if (cur == ',') {
+      advance();
+    }
+  }
+  advance();
+  res->type = OBJECT;
+  return true;
+}
 
 void pretty_print(Token *root, int depth) {
   if (root == NULL)
