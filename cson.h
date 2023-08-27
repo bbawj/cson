@@ -4,17 +4,12 @@
 
 typedef enum {
   NULL,
-  ELEMENT,
   OBJECT,
   ARRAY,
   STRING,
-  CHARACTER,
-  ESCAPE,
   NUMBER,
   TRUE,
   FALSE,
-  MEMBER,
-  VALUE,
 } TOKEN_TYPE;
 
 typedef struct Token {
@@ -29,5 +24,6 @@ typedef struct Token {
 bool scan_token(Token *res);
 bool scan_array(Token *res);
 bool scan_object(Token *res);
+bool read_json(char *path, Token *t);
 
 #endif // ! CSON_H

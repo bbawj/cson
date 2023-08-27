@@ -78,28 +78,18 @@ const char *translate_tokentype(TOKEN_TYPE t) {
   switch (t) {
   case 0:
     return "null";
-  case ELEMENT:
-    return "element";
   case OBJECT:
     return "object";
   case ARRAY:
     return "array";
   case STRING:
     return "string";
-  case CHARACTER:
-    return "char";
-  case ESCAPE:
-    return "escape";
   case NUMBER:
     return "number";
   case TRUE:
     return "true";
   case FALSE:
     return "false";
-  case MEMBER:
-    return "member";
-  case VALUE:
-    return "value";
   default:
     return NULL;
   }
@@ -333,6 +323,21 @@ bool scan_object(Token *res) {
   return true;
 }
 
+bool read_json(char *path, Token *t) {
+  init();
+  open_file(path);
+  if (!scan_token(t)) {
+    if (c.cur == c.size) {
+      printf("Reached EOF");
+      exit(1);
+    }
+    printf("An error while parsing char '%c' at position %zu", c.b[c.cur],
+           c.cur);
+    exit(0);
+  }
+  return true;
+}
+
 void pretty_print(Token *root, int depth) {
   if (root == NULL)
     return;
@@ -355,17 +360,10 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Usage: cson <PATH>\n");
     exit(1);
   }
-  init();
-  open_file(argv[1]);
   Token t = {0};
-  if (!scan_token(&t)) {
-    if (c.cur == c.size) {
-      printf("Reached EOF");
-      exit(1);
-    }
-    printf("An error while parsing char '%c' at position %zu", c.b[c.cur],
-           c.cur);
-    exit(0);
+  if (!read_json(argv[1], &t)) {
+    fprintf(stderr, "Failed to parse json file\n");
+    exit(1);
   }
   pretty_print(&t, 0);
 }
