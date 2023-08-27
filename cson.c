@@ -1,4 +1,5 @@
 #include "cson.h"
+#include <assert.h>
 #include <ctype.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -23,7 +24,7 @@ struct CSON c;
 void init() {
   c.cap = 1024 * 1024;
   c.size = 0;
-  c.cur = 0;
+  c.cur = -1;
   c.b = malloc(c.cap);
 }
 
@@ -46,7 +47,7 @@ void open_file(char *filename) {
   size_t len = 0;
   ssize_t nread;
   while ((nread = getline(&line, &len, fp)) != -1) {
-    append_line(line, len);
+    append_line(line, nread);
   }
   free(line);
   fclose(fp);
@@ -163,6 +164,22 @@ bool scan_number(Token *res) {
   }
 }
 
+char scan_next() {
+  while (true) {
+    char cur = advance();
+    switch (cur) {
+    case '\t':
+    case '\n':
+    case '\r':
+    case ' ':
+    case '\0':
+      continue;
+    default:
+      return cur;
+    }
+  }
+}
+
 bool scan_string(Token *res) {
   char cur = peek();
   if (cur != '"')
@@ -181,7 +198,6 @@ bool scan_string(Token *res) {
       text[len] = '\0';
       res->type = STRING;
       res->text = text;
-      advance();
       return true;
     } else if (next == '\\') {
       char next_next = advance();
@@ -198,6 +214,7 @@ bool scan_string(Token *res) {
       case 'u':
         break;
       default:
+        fprintf(stderr, "Invalid escape sequence '%c'\n", next_next);
         return false;
       }
     }
@@ -224,16 +241,11 @@ bool scan_special(Token *res, TOKEN_TYPE special) {
 
 bool scan_token(Token *res) {
   while (true) {
-    char cur = peek();
+    char cur = scan_next();
     switch (cur) {
-    case '\t':
-    case '\n':
-    case '\r':
-    case ' ':
-      advance();
-      continue;
+    case '\0':
+      return false;
     case '[':
-      advance();
       return scan_array(res);
     case '{':
       return scan_object(res);
@@ -252,25 +264,9 @@ bool scan_token(Token *res) {
   return false;
 }
 
-void skip_whitespace() {
-  while (true) {
-    char cur = peek();
-    switch (cur) {
-    case '\t':
-    case '\n':
-    case '\r':
-    case ' ':
-      advance();
-      continue;
-    default:
-      return;
-    }
-  }
-}
-
 bool scan_array(Token *res) {
   Token *root = res;
-  char cur = peek();
+  char cur = scan_next();
   while (cur != ']') {
     Token *next = malloc(sizeof(Token));
     next->child = NULL;
@@ -287,8 +283,7 @@ bool scan_array(Token *res) {
       free(next);
       return false;
     }
-    skip_whitespace();
-    cur = peek();
+    cur = scan_next();
     if (cur == ',') {
       cur = advance();
     }
@@ -299,14 +294,9 @@ bool scan_array(Token *res) {
 }
 
 bool scan_object(Token *res) {
-  char cur = peek();
-  if (cur != '{')
-    return false;
-
   Token *prev = res;
-  cur = advance();
+  char cur = scan_next();
   while (cur != '}') {
-    skip_whitespace();
     Token *next = malloc(sizeof(Token));
     next->child = NULL;
     next->next = NULL;
@@ -315,10 +305,10 @@ bool scan_object(Token *res) {
       free(next);
       return false;
     }
-    skip_whitespace();
-    cur = peek();
+    cur = scan_next();
     if (cur != ':') {
       free(next);
+      fprintf(stderr, "Expected ':' after key\n");
       return false;
     }
     advance();
@@ -333,8 +323,7 @@ bool scan_object(Token *res) {
     next->child = child;
     prev = next;
 
-    skip_whitespace();
-    cur = peek();
+    cur = scan_next();
     if (cur == ',') {
       advance();
     }
@@ -361,9 +350,13 @@ void pretty_print(Token *root, int depth) {
 }
 
 // TODO: store position and line to display as errors
-int main(void) {
+int main(int argc, char *argv[]) {
+  if (argc != 2) {
+    fprintf(stderr, "Usage: cson <PATH>\n");
+    exit(1);
+  }
   init();
-  open_file("json.json");
+  open_file(argv[1]);
   Token t = {0};
   if (!scan_token(&t)) {
     if (c.cur == c.size) {

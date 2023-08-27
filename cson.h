@@ -20,7 +20,9 @@ typedef enum {
 typedef struct Token {
   TOKEN_TYPE type;
   char *text;
+  // If exists, the child is the 'value' of the current 'key' token
   struct Token *child;
+  // If exists, holds the pointer to the next token at the same level
   struct Token *next;
 } Token;
 
