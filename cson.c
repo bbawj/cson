@@ -175,19 +175,23 @@ bool scan_string(Token *res) {
   if (cur != '"')
     return false;
 
-  size_t len = 1;
-  size_t start = c.cur;
+  size_t len = 0;
+  size_t start = c.cur + 1;
 
   while (true) {
     char next = advance();
     len++;
 
     if (next == '"') {
-      char *text = malloc(len + 1);
-      memcpy(text, &c.b[start], len);
-      text[len] = '\0';
+      if (len == 0) {
+        res->text = NULL;
+      } else {
+        char *text = malloc(len);
+        memcpy(text, &c.b[start], len - 1);
+        text[len - 1] = '\0';
+        res->text = text;
+      }
       res->type = STRING;
-      res->text = text;
       return true;
     } else if (next == '\\') {
       char next_next = advance();

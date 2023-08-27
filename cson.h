@@ -3,7 +3,7 @@
 #define CSON_H
 
 typedef enum {
-  NULL,
+  NULL_VALUE,
   OBJECT,
   ARRAY,
   STRING,
