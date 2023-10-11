@@ -1,2 +1,2 @@
 cson: cson.c cson.h
-	$(CC) cson.c -o cson -Wall -Wextra -pedantic -std=c99
+	gcc cson.c -o cson -Wall -Wextra -pedantic -std=c99 -g
