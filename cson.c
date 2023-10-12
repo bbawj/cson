@@ -7,7 +7,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Usage: cson <PATH>\n");
     exit(1);
   }
-  Token *t = read_json(&c, argv[1]);
+  Token *t = parse_json_file(&c, argv[1]);
   if (!t) {
     fprintf(stderr, "Failed to parse json file\n");
     exit(1);

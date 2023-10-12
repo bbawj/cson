@@ -12,6 +12,10 @@
 #define CSON_ALLOC malloc
 #endif
 
+#ifndef CSON_PRINT
+#define CSON_PRINT printf
+#endif
+
 typedef struct {
   char *line;
   size_t len;
@@ -286,6 +290,8 @@ bool scan_array(Cson *c, Token *res) {
     Token *next = CSON_ALLOC(sizeof(Token));
     next->child = NULL;
     next->next = NULL;
+    next->text = NULL;
+    next->type = 0;
 
     if (scan_token(c, next)) {
       if (root->child == NULL) {
@@ -318,6 +324,8 @@ bool scan_object(Cson *c, Token *res) {
     assert(next);
     next->child = NULL;
     next->next = NULL;
+    next->text = NULL;
+    next->type = 0;
 
     if (!scan_string(c, next)) {
       free(next);
@@ -334,6 +342,8 @@ bool scan_object(Cson *c, Token *res) {
     assert(child);
     child->child = NULL;
     child->next = NULL;
+    child->text = NULL;
+    child->type = 0;
     if (!scan_token(c, child)) {
       free(child);
       return false;
@@ -384,9 +394,10 @@ void pretty_print(Token *root, int depth) {
 
   while (root != NULL) {
     for (int i = 0; i < depth; i++) {
-      printf("\t");
+      CSON_PRINT("\t");
     }
-    printf("type: %s, text: %s\n", translate_tokentype(root->type), root->text);
+    CSON_PRINT("type: %s, text: %s\n", translate_tokentype(root->type),
+               root->text);
 
     if (root->child != NULL)
       pretty_print(root->child, depth + 1);
@@ -394,9 +405,7 @@ void pretty_print(Token *root, int depth) {
   }
 }
 
-Token *read_json(Cson *c, const char *path) {
-  init(c);
-  open_file(c, path);
+Token *parse_json(Cson *c) {
   Token *t = CSON_ALLOC(sizeof(Token));
   t->next = NULL;
   t->child = NULL;
@@ -404,14 +413,31 @@ Token *read_json(Cson *c, const char *path) {
   t->type = 0;
   if (!scan_token(c, t)) {
     if (c->cur == c->size) {
-      printf("Reached EOF");
+      CSON_PRINT("Reached EOF");
       return NULL;
     }
-    printf("An error while parsing char '%c' at position %zu", c->b[c->cur],
-           c->cur);
+    CSON_PRINT("An error while parsing char '%c' at position %zu", c->b[c->cur],
+               c->cur);
     return NULL;
   }
   return t;
+}
+
+Token *parse_json_file(Cson *c, const char *path) {
+  init(c);
+  open_file(c, path);
+  return parse_json(c);
+}
+
+void free_tokens(Token *t) {
+  if (t == NULL)
+    return;
+  while (t != NULL) {
+    free_tokens(t->child);
+    Token *temp = t->next;
+    free(t);
+    t = temp;
+  }
 }
 
 #endif // ! CSON_H
