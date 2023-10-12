@@ -69,7 +69,7 @@ void append_line(Cson *c, char *line, size_t len) {
   c->size += len;
 }
 
-void open_file(Cson *c, char *filename) {
+void open_file(Cson *c, const char *filename) {
   FILE *fp = fopen(filename, "r");
   if (!fp) {
     exit(0);
@@ -394,7 +394,7 @@ void pretty_print(Token *root, int depth) {
   }
 }
 
-Token *read_json(Cson *c, char *path) {
+Token *read_json(Cson *c, const char *path) {
   init(c);
   open_file(c, path);
   Token *t = CSON_ALLOC(sizeof(Token));
@@ -405,11 +405,11 @@ Token *read_json(Cson *c, char *path) {
   if (!scan_token(c, t)) {
     if (c->cur == c->size) {
       printf("Reached EOF");
-      exit(1);
+      return NULL;
     }
     printf("An error while parsing char '%c' at position %zu", c->b[c->cur],
            c->cur);
-    exit(0);
+    return NULL;
   }
   return t;
 }
