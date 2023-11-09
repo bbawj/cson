@@ -7,9 +7,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #ifndef CSON_ALLOC
 #define CSON_ALLOC malloc
+#endif
+
+#ifndef CSON_FREE
+#define CSON_FREE free
 #endif
 
 #ifndef CSON_PRINT
@@ -47,10 +52,17 @@ typedef struct Token {
   struct Token *next;
 } Token;
 
+Token *parse_json(Cson *c);
+Token *parse_json_file(Cson *c, const char *path);
+void free_tokens(Token *t);
+void pretty_print(Token *root, int depth);
+
+#ifdef CSON_IMPLEMENTATION
+
 void log_error(Cson *c, char *message) {
   char buf[256];
   snprintf(buf, sizeof(buf), "ERROR: invalid token '%c'. %s", c->b[c->cur],
-           message);
+      message);
   fprintf(stderr, "%s", buf);
 }
 
@@ -80,7 +92,7 @@ void open_file(Cson *c, const char *filename) {
   }
   char *line = NULL;
   size_t len = 0;
-  size_t nread;
+  ssize_t nread;
   while ((nread = getline(&line, &len, fp)) != -1) {
     append_line(c, line, nread);
   }
@@ -111,22 +123,22 @@ char peek_next(Cson *c) {
 
 const char *translate_tokentype(TOKEN_TYPE t) {
   switch (t) {
-  case 0:
-    return "null";
-  case OBJECT:
-    return "object";
-  case ARRAY:
-    return "array";
-  case STRING:
-    return "string";
-  case NUMBER:
-    return "number";
-  case TRUE:
-    return "true";
-  case FALSE:
-    return "false";
-  default:
-    return NULL;
+    case 0:
+      return "null";
+    case OBJECT:
+      return "object";
+    case ARRAY:
+      return "array";
+    case STRING:
+      return "string";
+    case NUMBER:
+      return "number";
+    case TRUE:
+      return "true";
+    case FALSE:
+      return "false";
+    default:
+      return NULL;
   }
 }
 
@@ -196,15 +208,15 @@ void skip_whitespace(Cson *c) {
   while (true) {
     char cur = peek(c);
     switch (cur) {
-    case '\t':
-    case '\n':
-    case '\r':
-    case ' ':
-    case '\0':
-      advance(c);
-      continue;
-    default:
-      return;
+      case '\t':
+      case '\n':
+      case '\r':
+      case ' ':
+      case '\0':
+        advance(c);
+        continue;
+      default:
+        return;
     }
   }
 }
@@ -243,19 +255,19 @@ bool scan_string(Cson *c, Token *res) {
       char next_next = advance(c);
       len++;
       switch (next_next) {
-      case '"':
-      case '\\':
-      case '/':
-      case 'b':
-      case 'f':
-      case 'n':
-      case 'r':
-      case 't':
-      case 'u':
-        break;
-      default:
-        fprintf(stderr, "Invalid escape sequence '%c'\n", next_next);
-        return false;
+        case '"':
+        case '\\':
+        case '/':
+        case 'b':
+        case 'f':
+        case 'n':
+        case 'r':
+        case 't':
+        case 'u':
+          break;
+        default:
+          fprintf(stderr, "Invalid escape sequence '%c'\n", next_next);
+          return false;
       }
     }
   }
@@ -367,22 +379,22 @@ bool scan_token(Cson *c, Token *res) {
     skip_whitespace(c);
     char cur = peek(c);
     switch (cur) {
-    case '\0':
-      return false;
-    case '[':
-      return scan_array(c, res);
-    case '{':
-      return scan_object(c, res);
-    case '"':
-      return scan_string(c, res);
-    case 't':
-      return scan_special(c, res, TRUE);
-    case 'f':
-      return scan_special(c, res, FALSE);
-    case 'n':
-      return scan_special(c, res, 0);
-    default:
-      return scan_number(c, res);
+      case '\0':
+        return false;
+      case '[':
+        return scan_array(c, res);
+      case '{':
+        return scan_object(c, res);
+      case '"':
+        return scan_string(c, res);
+      case 't':
+        return scan_special(c, res, TRUE);
+      case 'f':
+        return scan_special(c, res, FALSE);
+      case 'n':
+        return scan_special(c, res, 0);
+      default:
+        return scan_number(c, res);
     }
   }
   return false;
@@ -397,7 +409,7 @@ void pretty_print(Token *root, int depth) {
       CSON_PRINT("\t");
     }
     CSON_PRINT("type: %s, text: %s\n", translate_tokentype(root->type),
-               root->text);
+        root->text);
 
     if (root->child != NULL)
       pretty_print(root->child, depth + 1);
@@ -416,8 +428,8 @@ Token *parse_json(Cson *c) {
       CSON_PRINT("Reached EOF");
       return NULL;
     }
-    CSON_PRINT("An error while parsing char '%c' at position %zu", c->b[c->cur],
-               c->cur);
+    CSON_PRINT("An error while parsing char '%c' at position %zu",
+        c->b[c->cur], c->cur);
     return NULL;
   }
   return t;
@@ -435,9 +447,12 @@ void free_tokens(Token *t) {
   while (t != NULL) {
     free_tokens(t->child);
     Token *temp = t->next;
-    free(t);
+    CSON_FREE(t->text);
+    CSON_FREE(t);
     t = temp;
   }
 }
+
+#endif // CSON_IMPLEMENTATION
 
 #endif // ! CSON_H
