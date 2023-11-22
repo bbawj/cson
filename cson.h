@@ -62,7 +62,7 @@ void pretty_print(Token *root, int depth);
 void log_error(Cson *c, char *message) {
   char buf[256];
   snprintf(buf, sizeof(buf), "ERROR: invalid token '%c'. %s", c->b[c->cur],
-      message);
+           message);
   fprintf(stderr, "%s", buf);
 }
 
@@ -123,22 +123,22 @@ char peek_next(Cson *c) {
 
 const char *translate_tokentype(TOKEN_TYPE t) {
   switch (t) {
-    case 0:
-      return "null";
-    case OBJECT:
-      return "object";
-    case ARRAY:
-      return "array";
-    case STRING:
-      return "string";
-    case NUMBER:
-      return "number";
-    case TRUE:
-      return "true";
-    case FALSE:
-      return "false";
-    default:
-      return NULL;
+  case 0:
+    return "null";
+  case OBJECT:
+    return "object";
+  case ARRAY:
+    return "array";
+  case STRING:
+    return "string";
+  case NUMBER:
+    return "number";
+  case TRUE:
+    return "true";
+  case FALSE:
+    return "false";
+  default:
+    return NULL;
   }
 }
 
@@ -208,23 +208,28 @@ void skip_whitespace(Cson *c) {
   while (true) {
     char cur = peek(c);
     switch (cur) {
-      case '\t':
-      case '\n':
-      case '\r':
-      case ' ':
-      case '\0':
-        advance(c);
-        continue;
-      default:
-        return;
+    case '\t':
+    case '\n':
+    case '\r':
+    case ' ':
+      advance(c);
+      continue;
+    case '\0':
+      return;
+    default:
+      return;
     }
   }
 }
 
-char scan_next(Cson *c) {
-  advance(c);
+char scan(Cson *c) {
   skip_whitespace(c);
   return peek(c);
+}
+
+char scan_next(Cson *c) {
+  advance(c);
+  return scan(c);
 }
 
 bool scan_string(Cson *c, Token *res) {
@@ -237,6 +242,9 @@ bool scan_string(Cson *c, Token *res) {
 
   while (true) {
     char next = advance(c);
+    if (next == '\0') {
+      return false;
+    }
     len++;
 
     if (next == '"') {
@@ -250,24 +258,25 @@ bool scan_string(Cson *c, Token *res) {
         res->text = text;
       }
       res->type = STRING;
+      advance(c);
       return true;
     } else if (next == '\\') {
       char next_next = advance(c);
       len++;
       switch (next_next) {
-        case '"':
-        case '\\':
-        case '/':
-        case 'b':
-        case 'f':
-        case 'n':
-        case 'r':
-        case 't':
-        case 'u':
-          break;
-        default:
-          fprintf(stderr, "Invalid escape sequence '%c'\n", next_next);
-          return false;
+      case '"':
+      case '\\':
+      case '/':
+      case 'b':
+      case 'f':
+      case 'n':
+      case 'r':
+      case 't':
+      case 'u':
+        break;
+      default:
+        fprintf(stderr, "Invalid escape sequence '%c'\n", next_next);
+        return false;
       }
     }
   }
@@ -316,8 +325,7 @@ bool scan_array(Cson *c, Token *res) {
       free(next);
       return false;
     }
-    skip_whitespace(c);
-    cur = peek(c);
+    cur = scan(c);
     if (cur == ',') {
       cur = scan_next(c);
     }
@@ -343,7 +351,7 @@ bool scan_object(Cson *c, Token *res) {
       free(next);
       return false;
     }
-    cur = scan_next(c);
+    cur = scan(c);
     if (cur != ':') {
       free(next);
       fprintf(stderr, "Expected ':' after key\n");
@@ -364,9 +372,9 @@ bool scan_object(Cson *c, Token *res) {
     next->child = child;
     prev = next;
 
-    cur = scan_next(c);
+    cur = scan(c);
     if (cur == ',') {
-      advance(c);
+      cur = scan_next(c);
     }
   }
   advance(c);
@@ -376,25 +384,24 @@ bool scan_object(Cson *c, Token *res) {
 
 bool scan_token(Cson *c, Token *res) {
   while (true) {
-    skip_whitespace(c);
-    char cur = peek(c);
+    char cur = scan(c);
     switch (cur) {
-      case '\0':
-        return false;
-      case '[':
-        return scan_array(c, res);
-      case '{':
-        return scan_object(c, res);
-      case '"':
-        return scan_string(c, res);
-      case 't':
-        return scan_special(c, res, TRUE);
-      case 'f':
-        return scan_special(c, res, FALSE);
-      case 'n':
-        return scan_special(c, res, 0);
-      default:
-        return scan_number(c, res);
+    case '\0':
+      return false;
+    case '[':
+      return scan_array(c, res);
+    case '{':
+      return scan_object(c, res);
+    case '"':
+      return scan_string(c, res);
+    case 't':
+      return scan_special(c, res, TRUE);
+    case 'f':
+      return scan_special(c, res, FALSE);
+    case 'n':
+      return scan_special(c, res, 0);
+    default:
+      return scan_number(c, res);
     }
   }
   return false;
@@ -409,7 +416,7 @@ void pretty_print(Token *root, int depth) {
       CSON_PRINT("\t");
     }
     CSON_PRINT("type: %s, text: %s\n", translate_tokentype(root->type),
-        root->text);
+               root->text);
 
     if (root->child != NULL)
       pretty_print(root->child, depth + 1);
@@ -428,8 +435,8 @@ Token *parse_json(Cson *c) {
       CSON_PRINT("Reached EOF");
       return NULL;
     }
-    CSON_PRINT("An error while parsing char '%c' at position %zu",
-        c->b[c->cur], c->cur);
+    CSON_PRINT("An error while parsing char '%c' at position %zu", c->b[c->cur],
+               c->cur);
     return NULL;
   }
   return t;
